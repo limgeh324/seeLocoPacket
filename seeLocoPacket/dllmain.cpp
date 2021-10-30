@@ -1,9 +1,10 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include <Windows.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-DWORD requestReturnAddress = 0x00000000;
+DWORD requestReturnAddress = 0x10762BD; // first of 84 C0 0F 84 ?? ?? ?? ?? 8B 46 38 3B F8 77 3D 01 7E 3C 2B
+DWORD requestCallAddress = 0x1079160; // Address called from the previous of requestReturnAddress
 BYTE jmpByteArray[] = { 0xE9, 0x00, 0x00, 0x00, 0x00 };
 
 DWORD hook(LPVOID lpFunction, DWORD returnAddress)
@@ -47,10 +48,7 @@ void __declspec(naked) requestHookASM()
 
         popad
 
-        push ebp
-        mov ebp, esp
-        push -01
-
+        call requestCallAddress
         jmp requestReturnAddress
     }
 }
@@ -58,10 +56,11 @@ void __declspec(naked) requestHookASM()
 void seeLocoPacketMain()
 {
     DWORD processAddress = (DWORD)GetModuleHandleA("KakaoTalk.exe");
+    requestReturnAddress += processAddress;
+    requestCallAddress += processAddress;
     std::cout << "[+] processAddress -> 0x" << std::uppercase << std::hex << processAddress << std::endl;
-    DWORD requestAddress = processAddress + 0x1079160; // first of 55 8B EC 6A FF 68 ?? ?? ?? ?? 64 A1 00 00 00 00 50 51 53 56 57 A1 ?? ?? ?? ?? 33 C5 50 8D 45 F4 64 A3 00 00 00 00 8B F9 8B 4F 14 85 C9 0F 84 ?? ?? ?? ?? F6 87 9C 00 00 00 06 0F 85 ?? ?? ?? ?? 83 BF 94 00 00 00 00 0F 85 ?? ?? ?? ?? 8B 01 8B 40 5C FF D0 84 C0 0F 85
-    std::cout << "[+] requestAddress -> 0x" << std::uppercase << std::hex << requestAddress << std::endl << std::endl;
-    requestReturnAddress = requestAddress + 5;
+    std::cout << "[+] requestReturnAddress -> 0x" << std::uppercase << std::hex << requestReturnAddress << std::endl << std::endl;
+    std::cout << "[+] requestCallAddress -> 0x" << std::uppercase << std::hex << requestCallAddress << std::endl << std::endl;
 
     hook(requestHookASM, requestReturnAddress);
     std::cout << "[+] hooked request!" << std::endl << std::endl;
