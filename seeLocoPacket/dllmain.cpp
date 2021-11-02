@@ -2,11 +2,6 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-using json = nlohmann::json;
-using std::vector;
-using std::cout;
-using std::endl;
-
 DWORD requestReturnAddress = 0x10762B4;
 DWORD responseReturnAddress = 0x10793E4;
 
