@@ -3,7 +3,7 @@
 #include <nlohmann/json.hpp>
 
 DWORD requestReturnAddress = 0x10762B4;
-DWORD responseReturnAddress = 0x10793E4;
+DWORD responseReturnAddress = 0x1079424;
 
 BYTE jmpByteArray[] = { 0xE9, 0x00, 0x00, 0x00, 0x00 };
 
@@ -89,13 +89,20 @@ void printResponse(char* packet, uint32_t size)
     }
 }
 
-DWORD hook(LPVOID lpFunction, DWORD returnAddress)
+DWORD hook(LPVOID lpFunction, DWORD returnAddress, int nopCount = 0)
 {
     DWORD dwAddr = returnAddress - 5;
     DWORD dwCalc = ((DWORD)lpFunction - dwAddr - 5);
 
     memcpy(&jmpByteArray[1], &dwCalc, 4);
     WriteProcessMemory(GetCurrentProcess(), (LPVOID)dwAddr, jmpByteArray, sizeof(jmpByteArray), 0);
+
+    BYTE nopByte = 0x90;
+
+    for (int i = 0; i < nopCount; i++) {
+        WriteProcessMemory(GetCurrentProcess(), (LPVOID)(dwAddr + 5 + i), &nopByte, sizeof(nopByte), 0);
+    }
+
     return dwAddr;
 }
 
@@ -122,20 +129,24 @@ void __declspec(naked) responseHookASM() {
     __asm {
         pushad
 
-        mov ebx, [ebp + 0x10]
-        add ebx, 0x14
+        cmp[ebx + 0x08], 0x03
+        je return
 
-        push edi
+        mov ebx, [ebp - 0x20]
+        add ebx, [ebp - 0x18]
+
+        push[ebp - 0x1C]
         push ebx
         call printResponse
         add esp, 0x8
 
-        popad
+        return:
+            popad
 
-        mov eax, [ebp + 0x10]
-        test eax, eax
+            or ecx, -0x01
+            cmp[ebx + 0x08], 0x04
 
-        jmp responseReturnAddress
+            jmp responseReturnAddress
     }
 }
 
@@ -146,9 +157,9 @@ void Start()
     responseReturnAddress += baseAddress;
     std::cout << "[+] requestReturnAddress -> 0x" << std::nouppercase << std::hex << requestReturnAddress << std::endl;
     std::cout << "[+] responseReturnAddress -> 0x" << std::nouppercase << std::hex << responseReturnAddress << std::endl;
-    hook(requestHookASM, requestReturnAddress);
+    hook(requestHookASM, requestReturnAddress, 0);
     std::cout << "[+] hooked request!" << std::endl;
-    hook(responseHookASM, responseReturnAddress);
+    hook(responseHookASM, responseReturnAddress - 2, 2);
     std::cout << "[+] hooked response!" << std::endl << std::endl;
 }
 
