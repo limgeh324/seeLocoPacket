@@ -2,8 +2,8 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-DWORD requestReturnAddress = 0x10762B4;
-DWORD responseReturnAddress = 0x1079424;
+DWORD requestReturnAddress = 0x01069CEF + 0x5;
+DWORD responseReturnAddress = 0x0106CE31 + 0x7;
 
 BYTE jmpByteArray[] = { 0xE9, 0x00, 0x00, 0x00, 0x00 };
 
